@@ -49,19 +49,31 @@ export default function ProjectForm({ onUploaded }) {
         return;
       }
 
-      const formData = new FormData();
-      formData.append("video", videoFile);
-      Object.entries(form).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
-
-      setProgress("Uploading video & processing…");
+      setProgress("Getting secure upload URL…");
       setUploadPercentage(0);
 
-      const result = await new Promise((resolve, reject) => {
+      // 1. Get Direct Upload URL from Edge Function
+      const urlRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-video`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ action: "get_url" })
+      });
+      
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
+      
+      const { uploadUrl, uploadId } = urlData;
+
+      setProgress("Uploading video directly to Mux…");
+
+      // 2. Upload video file directly to Mux
+      await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-video`);
-        xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", videoFile.type || "video/mp4");
 
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
@@ -72,26 +84,38 @@ export default function ProjectForm({ onUploaded }) {
 
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              logActivity("Upload", `Uploaded new project "${form.title}"`);
-              resolve(data);
-            } catch (e) {
-              reject(new Error("Invalid JSON response"));
-            }
+            resolve();
           } else {
-            try {
-              const errData = JSON.parse(xhr.responseText);
-              reject(new Error(errData.error || "Upload failed"));
-            } catch {
-              reject(new Error("Upload failed with status " + xhr.status));
-            }
+            reject(new Error("Direct upload failed with status " + xhr.status));
           }
         };
 
-        xhr.onerror = () => reject(new Error("Network error occurred during upload."));
-        xhr.send(formData);
+        xhr.onerror = () => reject(new Error("Network error occurred during direct upload."));
+        xhr.send(videoFile);
       });
+
+      setProgress("Processing video & saving project… (this may take a minute)");
+      setUploadPercentage(100);
+
+      // 3. Finalize upload and insert project
+      const finalizeRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-video`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+          action: "finalize", 
+          uploadId, 
+          ...form 
+        })
+      });
+
+      const finalizeData = await finalizeRes.json();
+      if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize project");
+
+      const result = finalizeData;
+      logActivity("Upload", `Uploaded new project "${form.title}"`);
 
       // Play Apple notification sound
       const audio = new Audio("https://www.myinstants.com/media/sounds/iphone-notification.mp3");
