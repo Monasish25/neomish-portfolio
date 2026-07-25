@@ -908,7 +908,7 @@ function Contact() {
               <div className="contact-side">
                 <div className="contact-block">
                   <span className="contact-label">Direct</span>
-                  <a href="mailto:hello@novareyes.cut" className="contact-line"><Mail size={15} /> monasish25@gmail.com</a>
+                  <a href="mailto:monasish25@gmail.com" className="contact-line"><Mail size={15} /> monasish25@gmail.com</a>
                 </div>
                 <div className="contact-block">
                   <span className="contact-label">Elsewhere</span>
