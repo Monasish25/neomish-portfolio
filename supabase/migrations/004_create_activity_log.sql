@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS activity_log (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  action TEXT NOT NULL,
+  details TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Owner access" ON activity_log FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE activity_log;
