@@ -164,7 +164,6 @@ a{text-decoration:none; color:inherit;}
 
 .feature-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
 .feature-grid-wide{margin-top:30px;}
-@media (max-width:1024px){.feature-grid{grid-template-columns:repeat(2,1fr);}}
 @media (max-width:640px){.feature-grid{grid-template-columns:1fr;}}
 
 .proj-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; text-align:left; padding:0; transition:transform .2s, border-color .2s; width:100%; display:flex; flex-direction:column; height:100%;}
